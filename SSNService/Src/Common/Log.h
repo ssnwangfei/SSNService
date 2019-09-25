@@ -3,6 +3,7 @@
 #define LOG_H
 
 #include <string>
+namespace SSN{
 #define LOG_FILE L"c:\\temp\\log.txt"
 #define DEBUG_FILE L"c:\\temp\\debug.txt"
 class Log
@@ -29,12 +30,13 @@ bool writeToDebug(const wchar_t* msg);
 bool writeToLog(const wchar_t* msg);
 bool writeToDebug(std::wstring msg);
 bool writeToLog(std::wstring msg);
+}
 #ifdef _DEBUG
-#define DEBUG_PRINT(msg) writeToDebug(msg)
+#define DEBUG_PRINT(msg) SSN::writeToDebug(msg)
 #elif
 #define DEBUG_PRINT(msg)
 #endif
 
-#define LOG_PRINT(msg) writeToLog(msg)
+#define LOG_PRINT(msg) SSN::writeToLog(msg)
 
 #endif

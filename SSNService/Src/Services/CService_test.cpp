@@ -25,7 +25,7 @@ void CService_test::_register_ok()
 	this->WriteToLog("RegisterServiceCtrlHandler success");
 }
 
-bool CService_test::_init(SERVICE_STATUS& servicestatus)
+bool CService_test::_init()
 {
 	return true;
 }

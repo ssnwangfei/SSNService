@@ -1,10 +1,10 @@
 //#include "pch.h"
+#include <string>
 #include "CServiceManager.h"
 #include ".\Services\CServiceBase.h"
 #include ".\Services\CService_null.h"
 #include ".\Services\CService_test.h"
 #include ".\Services\CService_log.h"
-#include <string>
 #include ".\Common\Log.h"
 //定义服务信息
 //定义于此数组的服务会被注册成服务
@@ -32,13 +32,17 @@ END_DEFINE_SERVICE_INFO
 
 #define DEFAULT_WORK_SLEEP_TIME 3000 //间隔时间执行一次
 
+
 void WINAPI  CServiceManager::ServiceMain(int argc, char ** argv)
 {
 	//Sleep(30 * 1000);
 	PSERVICE_INFO si = CServiceManager::getServiceInfo((wchar_t*)argv[0]);
 
-	//
+	//服务名
 	std::wstring serviceName = (wchar_t*)argv[0];
+	//初始化指示
+	bool init_ok = false;
+	int sleepTime = DEFAULT_WORK_SLEEP_TIME;
 	DEBUG_PRINT(serviceName + L": 服务启动...");
 
 	if (si == nullptr) {
@@ -60,35 +64,39 @@ void WINAPI  CServiceManager::ServiceMain(int argc, char ** argv)
 	}
 
 	//注册服务控制器
-	si->hStatus = ::RegisterServiceCtrlHandlerEx(si->wname, si->pfunCtrlHandler,si);
+	si->hStatus = ::RegisterServiceCtrlHandlerEx(si->wname, si->pfunCtrlHandler, si);
 	if (si->hStatus == 0)
 	{
 
-		pService->_register_fail();
+		try { pService->_register_fail(); }
+		catch (...) { 
+			DEBUG_PRINT(serviceName + L":回调函数抛出异常[_register_fail]"); 
+		}
 		delete pService;
 		DEBUG_PRINT(serviceName + L": 注册服务失败...");
 		return;
 
 	}
-	pService->_register_ok();
 	DEBUG_PRINT(serviceName + L": 服务注册成功...");
-	SERVICE_STATUS& servicestatus = si->serviceStatus;
-	servicestatus.dwServiceType = SERVICE_WIN32;
-	servicestatus.dwCurrentState = SERVICE_START_PENDING;
-	servicestatus.dwControlsAccepted = SERVICE_ACCEPT_SHUTDOWN | SERVICE_ACCEPT_STOP;//在本例中只接受系统关机和停止服务两种控制命令
-	servicestatus.dwWin32ExitCode = 0;
-	servicestatus.dwServiceSpecificExitCode = 0;
-	servicestatus.dwCheckPoint = 0;
-	servicestatus.dwWaitHint = 0;
-	
-	//向SCM 报告运行状态
-	if (!pService->_init(servicestatus)) {
 
-		servicestatus.dwCurrentState = SERVICE_STOPPED;
-		SetServiceStatus(si->hStatus, &servicestatus);
-		delete pService;
+	SERVICE_STATUS& servicestatus = si->serviceStatus;
+	try { pService->_register_ok(); }
+	catch (...) {
+		DEBUG_PRINT(serviceName + L":回调函数抛出异常[_register_ok]");
+		goto exit;
+	}
+
+	//回调服务初始化函数
+	try {
+		init_ok = pService->_init();
+	}
+	catch (...) {
+		DEBUG_PRINT(serviceName + L":回调函数抛出异常[_init]");
+		goto exit;
+	}
+	if (!init_ok) {
 		DEBUG_PRINT(serviceName + L": 初始化失败...");
-		return;
+		goto exit;
 	}
 
 	si->pService = pService;
@@ -99,24 +107,46 @@ void WINAPI  CServiceManager::ServiceMain(int argc, char ** argv)
 	si->bRun = true;
 	while (si->bRun)
 	{
+
 		DEBUG_PRINT(serviceName + L": 服务运行中...");
-		int sleepTime = pService->_work();
+		try {
+			sleepTime = pService->_work();
+		}
+		catch (...) {
+			DEBUG_PRINT(serviceName + L": 工作函数出错，默认时间后重新调用...");
+			sleepTime = DEFAULT_WORK_SLEEP_TIME;
+		}
 		sleepTime = sleepTime == -1 ? DEFAULT_WORK_SLEEP_TIME : sleepTime;
 		if (si->bRun) Sleep(sleepTime);
 	}
-	pService->_uninit();
+
+	try {
+		pService->_uninit();
+	}
+	catch (...) {
+		DEBUG_PRINT(serviceName + L":回调函数抛出异常[_uninit]");
+		goto exit;
+	}
+exit:
 	delete pService;
 	si->pService = nullptr;
 	DEBUG_PRINT(serviceName + L": 服务退出...");
+	si->serviceStatus.dwCurrentState = SERVICE_STOP;
 	SetServiceStatus(si->hStatus, &(si->serviceStatus));
 }
 
 DWORD WINAPI CServiceManager::ServiceCtrlHandler(DWORD dwControl, DWORD dwEventType, LPVOID lpEventData, LPVOID lpContext)
 {
 	PSERVICE_INFO si = (PSERVICE_INFO)lpContext;
+	std::wstring serviceName = si->wname;
 	if (dwControl == SERVICE_CONTROL_INTERROGATE) return NO_ERROR;
-	DWORD rCode = si->pService->_ctrl(dwControl, dwEventType, lpEventData, lpContext);
-	
+	DWORD rCode = ERROR_CALL_NOT_IMPLEMENTED;
+	try{
+		rCode = si->pService->_ctrl(dwControl, dwEventType, lpEventData, lpContext);
+	}
+	catch (...) {
+		DEBUG_PRINT(serviceName + L": 回调函数抛出异常[_ctrl]");
+	}
 	if (rCode == ERROR_CALL_NOT_IMPLEMENTED) {
 		switch (dwControl)
 		{

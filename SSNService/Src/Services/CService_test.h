@@ -12,7 +12,7 @@ public:
 	CService_test(CServiceManager* sm, PSERVICE_INFO si);
 	void _register_fail();
 	void _register_ok();
-	bool _init(SERVICE_STATUS& servicestatus);
+	bool _init();
 	int  _work();
 	bool _uninit();
 	DWORD WINAPI _ctrl(DWORD dwControl, DWORD dwEventType, LPVOID lpEventData, LPVOID lpContext);

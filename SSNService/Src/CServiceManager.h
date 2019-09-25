@@ -30,11 +30,14 @@ typedef struct tag_SERVICE_INFO {
 SERVICE_INFO CServiceManager::services[] = {
 
 #define END_DEFINE_SERVICE_INFO		\
-	{L"","",nullptr,false,{},0}					\
+	{L"","",nullptr,false,{},0,nullptr}					\
 };
 
-#define DEFINE_SERVICE_INFO(serviceName,className) \
-	{L#serviceName, #className, ServiceCtrlHandler,false,{},0},
+#define DEFINE_SERVICE_INFO(serviceName,className)				\
+	{L#serviceName, #className, ServiceCtrlHandler,false,		\
+	  {SERVICE_WIN32,SERVICE_START_PENDING,SERVICE_ACCEPT_SHUTDOWN | SERVICE_ACCEPT_STOP,0,0,0,0},\
+	  0,	\
+	  nullptr},
 
 class CServiceManager
 {
