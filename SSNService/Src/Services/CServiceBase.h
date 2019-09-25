@@ -6,8 +6,6 @@
 class CServiceBase
 {
 public:
-	CServiceBase(CServiceManager* sm, PSERVICE_INFO si);
-	~CServiceBase();
 
 	//注册失败调用函数
 	virtual void _register_fail() {}
@@ -24,8 +22,16 @@ public:
 	virtual bool _uninit() { return true; }
 	//控制函数
 	virtual DWORD WINAPI _ctrl(DWORD dwControl, DWORD dwEventType, LPVOID lpEventData, LPVOID lpContext) { return ERROR_CALL_NOT_IMPLEMENTED; }
+	//请求服务停止
+	virtual void _request_stop() { return; }
+
+public:
+	CServiceBase(CServiceManager* sm, PSERVICE_INFO si);
+	~CServiceBase();
+	DWORD getThreadId();
 protected:
 	CServiceManager* _sm;
 	PSERVICE_INFO _si;
+	DWORD _threadId;
 };
 #endif

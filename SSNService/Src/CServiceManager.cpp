@@ -62,7 +62,8 @@ void WINAPI  CServiceManager::ServiceMain(int argc, char ** argv)
 		DEBUG_PRINT(serviceName + L": 创建服务失败...");
 		return;
 	}
-
+	// 线程Id
+	DWORD threadId = pService->getThreadId();
 	//注册服务控制器
 	si->hStatus = ::RegisterServiceCtrlHandlerEx(si->wname, si->pfunCtrlHandler, si);
 	if (si->hStatus == 0)
@@ -102,7 +103,8 @@ void WINAPI  CServiceManager::ServiceMain(int argc, char ** argv)
 	si->pService = pService;
 	servicestatus.dwCurrentState = SERVICE_RUNNING;
 	SetServiceStatus(si->hStatus, &servicestatus);
-	DEBUG_PRINT(serviceName + L": 初始化完成，开始运行...");
+	DEBUG_PRINT(serviceName + L": 初始化完成...");
+	DEBUG_PRINT(serviceName + L": 线程Id[" + std::to_wstring(threadId) + L"]");
 	//下面就开始任务循环了，你可以添加你自己希望服务做的工作
 	si->bRun = true;
 	while (si->bRun)
@@ -152,6 +154,12 @@ DWORD WINAPI CServiceManager::ServiceCtrlHandler(DWORD dwControl, DWORD dwEventT
 		{
 		case SERVICE_CONTROL_STOP:
 		case SERVICE_CONTROL_SHUTDOWN:
+			try {
+				si->pService->_request_stop();
+			}
+			catch (...) {
+				DEBUG_PRINT(serviceName + L": 回调函数抛出异常[_stop]");
+			}
 			si->bRun = false;
 			si->serviceStatus.dwCurrentState = SERVICE_STOPPED;
 			rCode = NO_ERROR;
